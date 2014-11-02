@@ -1,0 +1,89 @@
+---
+
+- name: Install sudo
+  apt: pkg=sudo state=present
+
+- name: Update apt cache
+  apt: update_cache=yes
+  sudo: yes  
+
+- name: Disable serial terminal 
+  lineinfile: "dest=/boot/cmdline.txt state=present regexp='dwc_otg.lpm_enable=0 console=ttyAMA0,115200' line='dwc_otg.lpm_enable=0 console=tty1 root=/dev/mmcblk0p2 rootfstype=ext4 elevator=deadline rootwait'"
+  sudo: true
+
+- name: Disable serial terminal (getty)
+  lineinfile: "dest=/etc/inittab state=present regexp='T0:23:respawn:/sbin/getty -L ttyAMA0' line='# T0:23:respawn:/sbin/getty -L ttyAMA0 115200 vt100'"
+  sudo: true
+
+- lineinfile: dest=/etc/php5/apache2/conf.d/20-dio.ini state=present line=extension=redis.so create=yes
+  tags: vagrant
+  sudo: true
+
+- lineinfile: dest=/etc/php5/cli/conf.d/20-redis.ini state=present line=extension=redis.so create=yes
+  tags: vagrant
+  sudo: true
+
+#- lineinfile: dest=/etc/apache2/sites-available/default regexp="AllowOverride None" line="AllowOverride All"
+#  tags: vagrant
+#  sudo: true
+
+- name: Install default apache configuration
+  copy: src=files/000-default dest=/etc/apache2/sites-available/000-default
+  sudo: yes
+
+- name: Enable Apache Rewrite Module
+  apache2_module: state=present name=rewrite
+  tags: vagrant
+  sudo: true
+
+- name: Stop Apache
+  action: service name=apache2 state=stopped
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/www state=absent
+  sudo: true
+
+- git: repo=https://github.com/iilab/emoncms.git dest=/var/
+  sudo: true
+
+- command: creates="/var/www" mv /var/emon /var/www
+  sudo: yes
+
+- git: repo=https://github.com/emoncms/raspberrypi.git dest=/var/www/Modules
+  sudo: true
+
+- file: name=/var/www owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- name: Restart Apache
+  action: service name=apache2 state=started
+  tags: vagrant
+  sudo: true
+
+- mysql_db: name=emoncms state=present
+  tags: vagrant
+  sudo: true
+
+- mysql_user: name=emoncms password=emoncms priv=emoncms.*:ALL state=present
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/lib/phpfiwa owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/lib/phpfina owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/lib/phptimeseries owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- name: Install emoncms settings file
+  copy: src=files/settings.php dest=/var/www/settings.php
+  tags: vagrant
+  sudo: yes
+

@@ -1,0 +1,186 @@
+---
+
+- name: Install sudo
+  apt: pkg=sudo state=present
+  tags: vagrant
+
+- name: Update apt cache
+  apt: update_cache=yes
+  tags: vagrant
+  sudo: yes  
+
+- name: Add Open Energy Monitor repo
+  apt_repository: repo='deb http://emon-repo.s3.amazonaws.com wheezy unstable' state=present
+  tags: vagrant
+  sudo: true
+
+- name: Update packages
+  apt: update_cache=yes
+  tags: vagrant
+  sudo: true
+
+- name: Install Apache
+  apt: pkg=apache2 state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=mysql-server state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=mysql-client state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=php5 state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=libapache2-mod-php5 state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=php5-mysql state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=php5-curl state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=php-pear state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=php5-dev state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=php5-mcrypt state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=php5-json state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=git-core state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=redis-server state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=build-essential state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=ufw state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=ntp state=latest
+  tags: vagrant
+  sudo: true
+
+- apt: pkg=python-mysqldb state=latest
+  tags: vagrant
+  sudo: true
+
+- name: Discover PEAR channels
+  command: pear channel-discover pear.swiftmailer.org
+  register: pear_channel_result
+  changed_when: "'initialized' not in pear_channel_result.stdout"
+  failed_when: "'failed' in pear_channel_result.stdout"
+  tags: vagrant
+  sudo: true
+
+- name: Install PEAR packages
+  command: pecl install channel://pecl.php.net/dio-0.0.6 redis swift/swift
+  register: pear_package_result
+  changed_when: "'is already installed' not in pear_package_result.stdout"
+  failed_when:  "'No releases available for package' in pear_package_result.stdout"
+  tags: vagrant
+  sudo: true
+
+- lineinfile: dest=/etc/php5/apache2/conf.d/20-dio.ini state=present line=extension=dio.so create=yes
+  tags: vagrant
+  sudo: true
+
+- lineinfile: dest=/etc/php5/cli/conf.d/20-dio.ini state=present line=extension=dio.so create=yes
+  tags: vagrant
+  sudo: true
+
+- lineinfile: dest=/etc/php5/apache2/conf.d/20-dio.ini state=present line=extension=redis.so create=yes
+  tags: vagrant
+  sudo: true
+
+- lineinfile: dest=/etc/php5/cli/conf.d/20-redis.ini state=present line=extension=redis.so create=yes
+  tags: vagrant
+  sudo: true
+
+#- lineinfile: dest=/etc/apache2/sites-available/default regexp="AllowOverride None" line="AllowOverride All"
+#  tags: vagrant
+#  sudo: true
+
+- name: Install default apache configuration
+  copy: src=files/000-default dest=/etc/apache2/sites-available/000-default
+  sudo: yes
+
+- name: Enable Apache Rewrite Module
+  apache2_module: state=present name=rewrite
+  tags: vagrant
+  sudo: true
+
+- name: Stop Apache
+  action: service name=apache2 state=stopped
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/www state=absent
+  sudo: true
+
+- git: repo=https://github.com/iilab/emoncms.git dest=/var/
+  sudo: true
+
+- command: creates="/var/www" mv /var/emon /var/www
+  sudo: yes
+
+- git: repo=https://github.com/emoncms/raspberrypi.git dest=/var/www/Modules
+  sudo: true
+
+- file: name=/var/www owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- name: Restart Apache
+  action: service name=apache2 state=started
+  tags: vagrant
+  sudo: true
+
+- mysql_db: name=emoncms state=present
+  tags: vagrant
+  sudo: true
+
+- mysql_user: name=emoncms password=emoncms priv=emoncms.*:ALL state=present
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/lib/phpfiwa owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/lib/phpfina owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- file: name=/var/lib/phptimeseries owner=www-data group=root state=directory
+  tags: vagrant
+  sudo: true
+
+- name: Install emoncms settings file
+  copy: src=files/settings.php dest=/var/www/settings.php
+  tags: vagrant
+  sudo: yes
+

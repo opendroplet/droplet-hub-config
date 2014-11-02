@@ -1,0 +1,8 @@
+---
+
+- name: Install sudo
+  apt: pkg=sudo state=present
+
+- name: Update apt cache
+  apt: update_cache=yes
+  sudo: yes  

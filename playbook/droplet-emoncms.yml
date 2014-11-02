@@ -1,0 +1,5 @@
+---
+- hosts: droplet-hub-emoncms
+  roles:
+   - droplet-raspberrypi tags=deploy
+   - droplet-emoncms #tags=deploy

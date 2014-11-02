@@ -1,0 +1,12 @@
+[droplet-hub-dev]
+droplet-hub-1 ansible_ssh_host=192.168.1.244 ansible_ssh_port=22 ansible_ssh_user=pi ansible_sudo_pass=raspberry
+
+[droplet-hub-ucl]
+
+[droplet-hub-thinkfarm]
+
+[droplet-hub-dev:vars]
+droplet_var=something
+
+[droplet-hub-emoncms:children]
+droplet-hub-dev

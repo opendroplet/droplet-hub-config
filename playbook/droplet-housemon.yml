@@ -1,0 +1,4 @@
+---
+- hosts: droplet-hub-housemon
+  roles:
+   - droplet-housemon
