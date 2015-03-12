@@ -6,18 +6,12 @@
 
 - name: Update apt cache
   apt: update_cache=yes
-  tags: vagrant
   sudo: yes  
 
-- name: Add Open Energy Monitor repo
-  apt_repository: repo='deb http://emon-repo.s3.amazonaws.com wheezy unstable' state=present
-  tags: vagrant
-  sudo: true
-
-- name: Update packages
-  apt: update_cache=yes
-  tags: vagrant
-  sudo: true
+#- name: Add Open Energy Monitor repo
+#  apt_repository: repo='deb http://emon-repo.s3.amazonaws.com wheezy unstable' state=present
+#  tags: vagrant
+#  sudo: true
 
 - name: Install Apache
   apt: pkg=apache2 state=latest
@@ -89,7 +83,7 @@
   sudo: true
 
 - name: Discover PEAR channels
-  command: pear channel-discover pear.swiftmailer.org
+  command: pear channel-discover pear.apache.org/log4php
   register: pear_channel_result
   changed_when: "'initialized' not in pear_channel_result.stdout"
   failed_when: "'failed' in pear_channel_result.stdout"
@@ -97,22 +91,38 @@
   sudo: true
 
 - name: Install PEAR packages
-  command: pecl install channel://pecl.php.net/dio-0.0.6 redis swift/swift
+  command: pecl install log4php/Apache_log4php redis
   register: pear_package_result
   changed_when: "'is already installed' not in pear_package_result.stdout"
   failed_when:  "'No releases available for package' in pear_package_result.stdout"
   tags: vagrant
   sudo: true
 
-- lineinfile: dest=/etc/php5/apache2/conf.d/20-dio.ini state=present line=extension=dio.so create=yes
-  tags: vagrant
-  sudo: true
+#- name: Discover PEAR channels
+#  command: pear channel-discover pear.swiftmailer.org
+#  register: pear_channel_result
+#  changed_when: "'initialized' not in pear_channel_result.stdout"
+#  failed_when: "'failed' in pear_channel_result.stdout"
+#  tags: vagrant
+#  sudo: true
 
-- lineinfile: dest=/etc/php5/cli/conf.d/20-dio.ini state=present line=extension=dio.so create=yes
-  tags: vagrant
-  sudo: true
+#- name: Install PEAR packages
+#  command: pecl install channel://pecl.php.net/dio-0.0.6 redis swift/swift
+#  register: pear_package_result
+#  changed_when: "'is already installed' not in pear_package_result.stdout"
+#  failed_when:  "'No releases available for package' in pear_package_result.stdout"
+#  tags: vagrant
+#  sudo: true
 
-- lineinfile: dest=/etc/php5/apache2/conf.d/20-dio.ini state=present line=extension=redis.so create=yes
+#- lineinfile: dest=/etc/php5/apache2/conf.d/20-dio.ini state=present line=extension=dio.so create=yes
+#  tags: vagrant
+#  sudo: true
+
+#- lineinfile: dest=/etc/php5/cli/conf.d/20-dio.ini state=present line=extension=dio.so create=yes
+#  tags: vagrant
+#  sudo: true
+
+- lineinfile: dest=/etc/php5/apache2/conf.d/20-redis.ini state=present line=extension=redis.so create=yes
   tags: vagrant
   sudo: true
 
@@ -134,30 +144,22 @@
   sudo: true
 
 - name: Stop Apache
-  action: service name=apache2 state=stopped
-  tags: vagrant
+  service: name=apache2 state=stopped
   sudo: true
 
 - file: name=/var/www state=absent
   sudo: true
 
-- git: repo=https://github.com/iilab/emoncms.git dest=/var/
-  sudo: true
-
-- command: creates="/var/www" mv /var/emon /var/www
-  sudo: yes
-
-- git: repo=https://github.com/emoncms/raspberrypi.git dest=/var/www/Modules
+- git: repo=https://github.com/opendroplet/emoncms.git dest=/var/www version=bufferedwrite
   sudo: true
 
 - file: name=/var/www owner=www-data group=root state=directory
-  tags: vagrant
   sudo: true
 
-- name: Restart Apache
-  action: service name=apache2 state=started
-  tags: vagrant
-  sudo: true
+#- name: Restart Apache
+#  service: name=apache2 state=restarted
+#  tags: vagrant
+#  sudo: true
 
 - mysql_db: name=emoncms state=present
   tags: vagrant
@@ -184,3 +186,12 @@
   tags: vagrant
   sudo: yes
 
+- name: Install feedwriter script
+  copy: src=files/feedwriter dest=/etc/init.d/feedwriter mode=0755
+  tags: vagrant
+  sudo: yes
+
+- name: Ensure feedwriter is started
+  service: name=feedwriter state=started enabled=yes
+  tags: vagrant
+  sudo: yes

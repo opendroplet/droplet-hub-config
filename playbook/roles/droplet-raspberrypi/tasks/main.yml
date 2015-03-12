@@ -1,8 +1,5 @@
 ---
 
-- name: Install sudo
-  apt: pkg=sudo state=present
-
 - name: Update apt cache
   apt: update_cache=yes
   sudo: yes  
@@ -15,75 +12,54 @@
   lineinfile: "dest=/etc/inittab state=present regexp='T0:23:respawn:/sbin/getty -L ttyAMA0' line='# T0:23:respawn:/sbin/getty -L ttyAMA0 115200 vt100'"
   sudo: true
 
-- lineinfile: dest=/etc/php5/apache2/conf.d/20-dio.ini state=present line=extension=redis.so create=yes
-  tags: vagrant
+- shell: '/sbin/parted -s /dev/mmcblk0 mkpart primary 3277MB 16.0GB creates=/dev/mmcblk0p3'
+  register: updated_partitions
   sudo: true
 
-- lineinfile: dest=/etc/php5/cli/conf.d/20-redis.ini state=present line=extension=redis.so create=yes
-  tags: vagrant
+- name: Restart the server after partition update  
+  command: "shutdown -r now"
+  when: updated_partitions.changed
   sudo: true
 
-#- lineinfile: dest=/etc/apache2/sites-available/default regexp="AllowOverride None" line="AllowOverride All"
-#  tags: vagrant
-#  sudo: true
+- name: Wait for server to come up after partition update  
+  local_action: wait_for host={{ansible_ssh_host}} port={{ansible_ssh_port}} delay=30
+  when: updated_partitions.changed
+  sudo: false
 
-- name: Install default apache configuration
-  copy: src=files/000-default dest=/etc/apache2/sites-available/000-default
-  sudo: yes
-
-- name: Enable Apache Rewrite Module
-  apache2_module: state=present name=rewrite
-  tags: vagrant
+- name: Create ext2 filesystem with 1024 bytes blocksize instead of the default 4096 bytes.  
+  filesystem: fstype=ext2 dev=/dev/mmcblk0p3 opts="-b 1024"
   sudo: true
 
-- name: Stop Apache
-  action: service name=apache2 state=stopped
-  tags: vagrant
+- name: Create /home/pi/data
+  file: dest=/home/pi/data state=directory
+
+- lineinfile: dest='/etc/default/rcS' line='RAMTMP=yes'
   sudo: true
 
-- file: name=/var/www state=absent
+- copy: src=files/fstab dest=/etc/fstab
+  register: updated_mounts
   sudo: true
 
-- git: repo=https://github.com/iilab/emoncms.git dest=/var/
+- file: src=/proc/self/mounts dest=/etc/mtab state=link
   sudo: true
 
-- command: creates="/var/www" mv /var/emon /var/www
-  sudo: yes
-
-- git: repo=https://github.com/emoncms/raspberrypi.git dest=/var/www/Modules
+- copy: src=files/rpi-rw dest=/usr/bin/rpi-rw mode=0755
   sudo: true
 
-- file: name=/var/www owner=www-data group=root state=directory
-  tags: vagrant
+- copy: src=files/rpi-ro dest=/usr/bin/rpi-ro mode=0755
   sudo: true
 
-- name: Restart Apache
-  action: service name=apache2 state=started
-  tags: vagrant
+- name: Restart the server after mount update  
+  command: "shutdown -r now"
+  when: updated_mounts.changed
   sudo: true
 
-- mysql_db: name=emoncms state=present
-  tags: vagrant
-  sudo: true
+- name: Wait for server to come up after mount update  
+  local_action: wait_for host={{ansible_ssh_host}} port={{ansible_ssh_port}} delay=30
+  when: updated_mounts.changed
+  sudo: false
 
-- mysql_user: name=emoncms password=emoncms priv=emoncms.*:ALL state=present
-  tags: vagrant
+- name: Change /home/pi/data permissions
+  file: dest=/home/pi/data owner=pi group=pi mode=777 state=directory
   sudo: true
-
-- file: name=/var/lib/phpfiwa owner=www-data group=root state=directory
-  tags: vagrant
-  sudo: true
-
-- file: name=/var/lib/phpfina owner=www-data group=root state=directory
-  tags: vagrant
-  sudo: true
-
-- file: name=/var/lib/phptimeseries owner=www-data group=root state=directory
-  tags: vagrant
-  sudo: true
-
-- name: Install emoncms settings file
-  copy: src=files/settings.php dest=/var/www/settings.php
-  tags: vagrant
-  sudo: yes
 
